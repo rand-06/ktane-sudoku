@@ -26,6 +26,7 @@ public class senseiSudokuScript : MonoBehaviour
 	
 	static int ModuleIdCounter = 1;
 	int ModuleId;
+	private bool moduleActivated, TwitchPlaysActive;
 	
 	void initializeSudoku()
 	{
@@ -122,6 +123,7 @@ public class senseiSudokuScript : MonoBehaviour
 	
 	void selected()
 	{
+		if (!moduleActivated || TwitchPlaysActive) return;
 		terminate = false;
 		submitText.color = Color.black;
 		SUB1 = (int)BombInfo.GetTime() % 16;
@@ -130,6 +132,7 @@ public class senseiSudokuScript : MonoBehaviour
 
 	void deselected()
 	{
+		if (!moduleActivated || TwitchPlaysActive) return;
 		terminate = true;
 		if (submitText.text.Contains('*') || submitText.text == "")
 		{
@@ -147,6 +150,7 @@ public class senseiSudokuScript : MonoBehaviour
 		}
 		else
 		{
+			Debug.LogFormat("[Sudoku #{0}] You submitted {1}, which is wrong." , ModuleId, submitText.text);
 			GetComponent<KMBombModule>().HandleStrike();
 			submitText.color = Color.red;
 		}
@@ -162,7 +166,11 @@ public class senseiSudokuScript : MonoBehaviour
 		ANS2 = (initSolution[9] - '1') * 4 + initSolution[10] - '1';
 		Debug.LogFormat("[Sudoku #{0}] Your answer is: {1}.", ModuleId, ANS1 + "-" + ANS2);
 		Module.OnFocus += selected;
-		Module.OnDefocus += deselected;
+		Module.OnDefocus += GameFixes.OnDefocus(deselected);
+		GetComponent<KMBombModule>().OnActivate += delegate()
+		{
+			moduleActivated = true;
+		};
 	}
 	
 	
@@ -171,9 +179,7 @@ public class senseiSudokuScript : MonoBehaviour
 #pragma warning restore 414
     public IEnumerator ProcessTwitchCommand(string Command)
     {
-	    Module.OnFocus -= selected;
-	    Module.OnDefocus -= deselected;
-        yield return null;
+	    yield return null;
         string[] commands = Command.Split('-');
         if (commands.Length != 2){yield return "sendtochaterror Invalid command."; yield break;}
         int?[] numbers = commands.Select(x => x.TryParseInt()).ToArray();
@@ -196,9 +202,7 @@ public class senseiSudokuScript : MonoBehaviour
 
     public IEnumerator TwitchHandleForcedSolve()
     {
-	    Module.OnFocus -= selected;
-	    Module.OnDefocus -= deselected;
-        yield return null;
+	    yield return null;
         submitText.text = ANS1 + "-" + ANS2;
 	    GetComponent<KMBombModule>().HandlePass();
 	    eyes.sprite = eyesSprites[1];
